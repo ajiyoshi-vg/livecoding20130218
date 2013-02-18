@@ -1,6 +1,9 @@
 module Lifegame
 (
 World
+, display
+, surround
+, willBeBorn
 ) where
 
 -- | 座標を表すデータ
@@ -41,4 +44,47 @@ class World a where
 instance World AliveList where
     alive (AliveList ls) pt = pt `elem` ls
 
+-- | 盤面を表示する
+-- >>> let world = AliveList [Point 1 2]
+-- >>> display [0..3] [0..2] world
+-- _o__
+-- ____
+-- ____
+--
+-- >>> let world2 = AliveList [Point 1 2, Point 2 2]
+-- >>> display [0..3] [0..2] world2
+-- _oo_
+-- ____
+-- ____
+--
+-- >>> display [0..5] [0..2] world2
+-- _oo___
+-- ______
+-- ______
+display :: World a => [Int] -> [Int] -> a -> IO ()
+display xs ys w = 
+    mapM_ (putStrLn . lineAt) ys'
+        where
+            ys' = reverse ys
+            lineAt y = map ptToChar [Point a y | a <- xs ]
+            ptToChar pt 
+                | alive w pt = 'o'
+                | otherwise  = '_'
+
+-- FIXME 適切な名前を考える。Bornって形容詞じゃないか？
+-- | ある座標が、次回「誕生」するか
+-- >>> let w = AliveList [Point 0 1,Point 0 2,Point 1 2]
+-- >>> display [0..2] [0..2] w
+-- oo_
+-- o__
+-- ___
+--
+-- >>> willBeBorn w (Point 1 1)
+-- True
+--
+-- >>> willBeBorn w (Point 2 2)
+-- False
+willBeBorn :: World a => a -> Point -> Bool
+willBeBorn w pt = num == 3 where
+    num = length $ filter (alive w) $ surround pt
 
