@@ -4,7 +4,12 @@ World
 , display
 , surround
 , willBeBorn
+, willBeAlive
+, willBeDead
 ) where
+
+-- $setup
+-- >>> let d22 = display [0..2] [0..2] :: AliveList -> IO() 
 
 -- | 座標を表すデータ
 -- >>> Point 1 2
@@ -33,6 +38,7 @@ data AliveList = AliveList [Point] deriving(Show)
 
 class World a where
     alive :: a -> Point -> Bool
+    next :: a -> a
 
 -- | あるPointが生きているか返す
 -- >>> let world = AliveList [Point 1 2]
@@ -41,8 +47,35 @@ class World a where
 --
 -- >>> alive world (Point 1 3)
 -- False
+--
+-- >>> let w = AliveList [Point 0 1,Point 0 2,Point 1 2]
+-- >>> display [0..2] [0..2] w
+-- oo_
+-- o__
+-- ___
+--
+-- >>> display [0..2] [0..2] (next w)
+-- oo_
+-- oo_
+-- ___
+--
+-- >>> let w = AliveList [Point 1 1,Point 0 2,Point 1 2]
+-- >>> display [0..2] [0..2] w
+-- oo_
+-- _o_
+-- ___
+--
+-- >>> d22 (next w)
+-- oo_
+-- oo_
+-- ___
+--
 instance World AliveList where
     alive (AliveList ls) pt = pt `elem` ls
+    next w@(AliveList ls) = AliveList $ baby ++ stay where
+        baby = filter (willBeBorn w) $
+            filter (not . (alive w)) $ concatMap surround ls
+        stay = filter (willBeAlive w) ls
 
 -- | 盤面を表示する
 -- >>> let world = AliveList [Point 1 2]
@@ -87,4 +120,45 @@ display xs ys w =
 willBeBorn :: World a => a -> Point -> Bool
 willBeBorn w pt = num == 3 where
     num = length $ filter (alive w) $ surround pt
+
+-- | 次の状態で、あるポイントが生存するかどうか
+-- >>> let w = AliveList [Point 1 1,Point 0 2,Point 1 2]
+-- >>> display [0..2] [0..2] w
+-- oo_
+-- _o_
+-- ___
+--
+-- >>> willBeAlive w (Point 1 1)
+-- True
+--
+-- >>> let w2 = AliveList []
+-- >>> display [0..3] [0..3] w2
+-- ____
+-- ____
+-- ____
+-- ____
+--
+-- >>> willBeAlive w2 (Point 1 1)
+-- False
+willBeAlive :: World a => a -> Point -> Bool
+willBeAlive world pt = num == 2 || num == 3 where
+    num = length $ filter (alive world) $ surround pt 
+
+-- | 死ぬケース
+-- >>> let w = AliveList [Point 1 1, Point 2 1]
+-- >>> willBeDead w (Point 1 1)
+-- True
+--
+-- >>> let w2 = AliveList [Point 0 1,Point 1 1,Point 0 2,Point 1 2,Point 2 2]
+-- >>> display [0..2] [0..2] w2
+-- ooo
+-- oo_
+-- ___
+-- 
+-- >>> willBeDead w2 (Point 1 1)
+-- True
+willBeDead :: World a => a -> Point -> Bool
+willBeDead w pt = not $ willBeAlive w pt 
+
+
 
