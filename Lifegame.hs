@@ -8,13 +8,16 @@ World
 , willBeDead
 ) where
 
+import System.Posix
+import Data.List
+
 -- $setup
 -- >>> let d22 = display [0..2] [0..2] :: AliveList -> IO() 
 
 -- | 座標を表すデータ
 -- >>> Point 1 2
 -- Point 1 2
-data Point = Point Int Int deriving(Show, Eq)
+data Point = Point Int Int deriving(Show, Eq, Ord)
 
 
 -- | ある座標の周りにある座標のリスト
@@ -70,12 +73,50 @@ class World a where
 -- oo_
 -- ___
 --
+-- >>> let w3 = AliveList [Point 0 1,Point 1 1,Point 0 2,Point 1 2,Point 2 2]
+-- >>> display [0..2] [0..3]  w3
+-- ___
+-- ooo
+-- oo_
+-- ___
+-- 
+-- >>> display [0..2] [0..3] $ next w3
+-- _o_
+-- o_o
+-- o_o
+-- ___
+--
+-- >>> next w3
+-- AliveList [Point 0 1,Point 0 2,Point 1 3,Point 2 1,Point 2 2]
+--
+-- >>> let w4 = AliveList [Point 1 1,Point 2 1]
+-- >>> d22 w4
+-- ___
+-- _oo
+-- ___
+--
+-- >>> d22 $ next w4
+-- ___
+-- ___
+-- ___
 instance World AliveList where
     alive (AliveList ls) pt = pt `elem` ls
-    next w@(AliveList ls) = AliveList $ baby ++ stay where
+    next w@(AliveList ls) = AliveList nextList where
         baby = filter (willBeBorn w) $
-            filter (not . (alive w)) $ concatMap surround ls
+            filter (not . alive w) $ 
+            concatMap surround ls
         stay = filter (willBeAlive w) ls
+        uniq = map head . group . sort
+        nextList = uniq (baby ++ stay)
+
+run :: World a => [Int] -> [Int] -> a -> Int -> IO ()
+run _ _ _ 0 = return ()
+run xs ys world num = do
+    putStr "\ESC[2J"
+    display xs ys world
+    usleep 1000000
+    run xs ys (next world) (num-1)
+
 
 -- | 盤面を表示する
 -- >>> let world = AliveList [Point 1 2]
@@ -159,6 +200,4 @@ willBeAlive world pt = num == 2 || num == 3 where
 -- True
 willBeDead :: World a => a -> Point -> Bool
 willBeDead w pt = not $ willBeAlive w pt 
-
-
 
